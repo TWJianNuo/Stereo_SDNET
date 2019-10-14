@@ -110,6 +110,9 @@ class MonodepthOptions:
         self.parser.add_argument("--read_stereo",
                                  action="store_true"
                                  )
+        self.parser.add_argument("--use_two_images",
+                                 action="store_true"
+                                 )
 
 
         # OPTIMIZATION options

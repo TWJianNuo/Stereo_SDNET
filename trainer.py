@@ -72,8 +72,12 @@ class Trainer:
             self.opt.frame_ids.append("s")
         # print("1")
         # a = torch.zeros([4, 4, 4]).cuda()
+        if not self.opt.use_two_images:
+            num_input_images = 1
+        else:
+            num_input_images = 2
         self.models["encoder"] = networks.ResnetEncoder(
-            self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.opt.num_layers, self.opt.weights_init == "pretrained", num_input_images = num_input_images)
         # print("1.5")
         # a = torch.zeros([4,4,4]).cuda()
         # print("1.55")
@@ -1028,7 +1032,8 @@ class Trainer:
     def run_epoch(self):
         """Run a single epoch of training and validation
         """
-        is_normal_training = self.decide_training_mode()
+        # is_normal_training = self.decide_training_mode()
+        is_normal_training = True
         self.model_lr_scheduler.step()
 
         if is_normal_training:
@@ -1118,10 +1123,10 @@ class Trainer:
             #
             #     losses["totLoss"] = losses["totLoss"] + self.loss_G * 0.1
 
-            if is_normal_training:
-                outputs, losses = self.supervised_with_photometric(inputs)
-            else:
-                outputs, losses = self.supervised_with_morph(inputs)
+            # if is_normal_training:
+            #     outputs, losses = self.supervised_with_photometric(inputs)
+            # else:
+            #     outputs, losses = self.supervised_with_morph(inputs)
                 # outputs = dict()
                 # losses = dict()
                 # with open('filename.pickle', 'rb') as handle:
@@ -1137,10 +1142,7 @@ class Trainer:
                 # self.merge_multDisp(inputs, outputs)
                 # losses["totLoss"] = torch.mean((outputs['disp', 0] - outputs['dispMaps_morphed']) ** 2) * 100
 
-
-
-
-
+            outputs, losses = self.supervised_with_photometric(inputs)
             duration = time.time() - before_op_time
 
             # log less frequently after the first 2000 steps to save time & disk space
@@ -1190,8 +1192,8 @@ class Trainer:
         banSemanticsFlag = 'kitti' in tags and not self.opt.predictboth
         # banDepthFlag = 'cityscape' in tags and not self.opt.predictboth
         banDepthFlag = 'cityscape' in tags
-
-        features = self.models["encoder"](inputs["color_aug", 0, 0])
+        all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
+        features = self.models["encoder"](all_color_aug)
         outputs = dict()
 
         # for i in range(self.opt.batch_size):
