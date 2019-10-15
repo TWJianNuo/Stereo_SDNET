@@ -113,7 +113,9 @@ class MonodepthOptions:
         self.parser.add_argument("--use_two_images",
                                  action="store_true"
                                  )
-
+        self.parser.add_argument("--direction_left",
+                                 action="store_true"
+                                 )
 
         # OPTIMIZATION options
         self.parser.add_argument("--batch_size",

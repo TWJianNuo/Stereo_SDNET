@@ -269,13 +269,13 @@ class Trainer:
 
             train_dataset = initFunc(
                 datapath_set[i], train_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo, direction_left=self.opt.direction_left)
             train_sample_num[i] = train_dataset.__len__()
             stacked_train_datasets.append(train_dataset)
 
             val_dataset = initFunc(
                 datapath_set[i], val_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, direction_left=self.opt.direction_left)
             val_sample_num[i] = val_dataset.__len__()
             stacked_val_datasets.append(val_dataset)
 
@@ -1193,11 +1193,17 @@ class Trainer:
         # banDepthFlag = 'cityscape' in tags and not self.opt.predictboth
         banDepthFlag = 'cityscape' in tags
         all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
-        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=2).show()
-        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=2).show()
+        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=0).show()
+        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=0).show()
         #
         # tensor2rgb(inputs[("color_aug", 0, 0)], ind=1).show()
         # tensor2rgb(inputs[("color_aug", 's', 0)], ind=1).show()
+        #
+        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=2).show()
+        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=2).show()
+        #
+        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=3).show()
+        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=3).show()
         features = self.models["encoder"](all_color_aug)
         outputs = dict()
 
