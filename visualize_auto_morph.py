@@ -65,7 +65,7 @@ def evaluate(opt):
     dataloader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers,
                             pin_memory=True, drop_last=True)
 
-    encoder = networks.ResnetEncoder(opt.num_layers, False)
+    encoder = networks.ResnetEncoder(opt.num_layers, False, num_input_images=2)
     if opt.switchMode == 'on':
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, isSwitch=True, isMulChannel=opt.isMulChannel)
     else:
@@ -89,8 +89,10 @@ def evaluate(opt):
                 if not(key == 'height' or key == 'width' or key == 'tag' or key == 'cts_meta' or key == 'file_add'):
                     inputs[key] = ipt.to(torch.device("cuda"))
 
-
-            input_color = inputs[("color", 0, 0)].cuda()
+            input_color = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1).cuda()
+            # input_color = inputs[("color", 0, 0)].cuda()
+            # tensor2rgb(inputs[("color_aug", 0, 0)], ind=0).show()
+            # tensor2rgb(inputs[("color_aug", 's', 0)], ind=0).show()
             features = encoder(input_color)
             outputs = dict()
             outputs.update(depth_decoder(features, computeSemantic=True, computeDepth=False))

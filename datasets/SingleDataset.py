@@ -150,6 +150,7 @@ class SingleDataset(data.Dataset):
         # do_color_aug = False
         do_flip = self.is_train and random.random() > 0.5
         # do_flip = random.random() > 0.5
+        # do_flip = True
         line = self.filenames[index].split()
         folder = line[0]
 
@@ -167,11 +168,22 @@ class SingleDataset(data.Dataset):
 
 
         for i in self.frame_idxs:
-            if i == "s":
-                other_side = {"r": "l", "l": "r"}[side]
-                inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
+            if not do_flip:
+                inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'l', do_flip)
+                inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'r', do_flip)
+                # if i == "s":
+                #     other_side = {"r": "l", "l": "r"}[side]
+                #     inputs[("color", 's', -1)] = self.get_color(folder, frame_index, other_side, do_flip)
+                # else:
+                #     inputs[("color", 0, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
             else:
-                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+                inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'l', do_flip)
+                inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'r', do_flip)
+                # if i == "s":
+                #     other_side = {"r": "l", "l": "r"}[side]
+                #     inputs[("color", 0, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
+                # else:
+                #     inputs[("color", 's', -1)] = self.get_color(folder, frame_index + i, side, do_flip)
 
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
@@ -197,7 +209,7 @@ class SingleDataset(data.Dataset):
         # self.preprocess(inputs, color_aug)
 
         if self.load_depth:
-            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+            depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
@@ -220,8 +232,10 @@ class SingleDataset(data.Dataset):
         rescale_fac = self.get_rescaleFac(folder)
         if "s" in self.frame_idxs:
             stereo_T = np.eye(4, dtype=np.float32)
-            baseline_sign = -1 if do_flip else 1
-            side_sign = -1 if side == "l" else 1
+            # baseline_sign = -1 if do_flip else 1
+            # side_sign = -1 if side == "l" else 1
+            side_sign = -1
+            baseline_sign = 1
             stereo_T[0, 3] = side_sign * baseline_sign * 0.1 * rescale_fac
 
             inputs["stereo_T"] = torch.from_numpy(stereo_T)

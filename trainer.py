@@ -1193,6 +1193,11 @@ class Trainer:
         # banDepthFlag = 'cityscape' in tags and not self.opt.predictboth
         banDepthFlag = 'cityscape' in tags
         all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
+        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=2).show()
+        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=2).show()
+        #
+        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=1).show()
+        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=1).show()
         features = self.models["encoder"](all_color_aug)
         outputs = dict()
 
