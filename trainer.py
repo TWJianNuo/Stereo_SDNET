@@ -27,7 +27,6 @@ from utils import my_Sampler
 from cityscapesscripts.evaluation.evalPixelLevelSemanticLabeling import *
 import Discriminator
 import pickle
-from bnmorph.bnmorph import BNMorph
 from timeit import default_timer as timer
 torch.manual_seed(0)
 
