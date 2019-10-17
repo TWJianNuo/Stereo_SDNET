@@ -150,7 +150,6 @@ class SingleDataset(data.Dataset):
         # do_color_aug = False
         do_flip = self.is_train and random.random() > 0.5
         # do_flip = random.random() > 0.5
-        # do_flip = True
         line = self.filenames[index].split()
         folder = line[0]
 
@@ -168,35 +167,12 @@ class SingleDataset(data.Dataset):
 
 
         for i in self.frame_idxs:
-            if self.direction_left:
-                if not do_flip:
-                    inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'l', do_flip)
-                    inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'r', do_flip)
-                    # if i == "s":
-                    #     other_side = {"r": "l", "l": "r"}[side]
-                    #     inputs[("color", 's', -1)] = self.get_color(folder, frame_index, other_side, do_flip)
-                    # else:
-                    #     inputs[("color", 0, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
-                else:
-                    inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'l', do_flip)
-                    inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'r', do_flip)
-                    # if i == "s":
-                    #     other_side = {"r": "l", "l": "r"}[side]
-                    #     inputs[("color", 0, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
-                    # else:
-                    #     inputs[("color", 's', -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+            if i == "s":
+                other_side = {"r": "l", "l": "r"}[side]
+                inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
             else:
-                if not do_flip:
-                    inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'l', do_flip)
-                    inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'r', do_flip)
-                    # if i == "s":
-                    #     other_side = {"r": "l", "l": "r"}[side]
-                    #     inputs[("color", 's', -1)] = self.get_color(folder, frame_index, other_side, do_flip)
-                    # else:
-                    #     inputs[("color", 0, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
-                else:
-                    inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'l', do_flip)
-                    inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'r', do_flip)
+                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
             K = org_K.copy()
@@ -221,31 +197,13 @@ class SingleDataset(data.Dataset):
         # self.preprocess(inputs, color_aug)
 
         if self.load_depth:
-            if self.direction_left:
-                if do_flip:
-                    depth_gt = self.get_depth(folder, frame_index, 'r', do_flip)
-                else:
-                    depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
-            else:
-                if do_flip:
-                    depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
-                else:
-                    depth_gt = self.get_depth(folder, frame_index, 'r', do_flip)
+            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
         if self.load_seman:
             # (self, folder, frame_index, side, do_flip)
-            if self.direction_left:
-                if do_flip:
-                    seman_gt, _ = self.get_seman(folder, frame_index, 'r', do_flip)
-                else:
-                    seman_gt, _ = self.get_seman(folder, frame_index, 'l', do_flip)
-            else:
-                if do_flip:
-                    seman_gt, _ = self.get_seman(folder, frame_index, 'l', do_flip)
-                else:
-                    seman_gt, _ = self.get_seman(folder, frame_index, 'r', do_flip)
+            seman_gt, _ = self.get_seman(folder, frame_index, side, do_flip)
             if seman_gt is not None:
                 inputs["seman_gt_eval"] = seman_gt
                 inputs["seman_gt"] = torch.from_numpy(np.expand_dims(np.array(self.seman_resize(Image.fromarray(seman_gt))), 0).astype(np.int))
@@ -262,20 +220,12 @@ class SingleDataset(data.Dataset):
         rescale_fac = self.get_rescaleFac(folder)
         if "s" in self.frame_idxs:
             stereo_T = np.eye(4, dtype=np.float32)
-            # baseline_sign = -1 if do_flip else 1
-            # side_sign = -1 if side == "l" else 1
-            if self.direction_left:
-                side_sign = -1
-            else:
-                side_sign = 1
-            baseline_sign = 1
+            baseline_sign = -1 if do_flip else 1
+            side_sign = -1 if side == "l" else 1
             stereo_T[0, 3] = side_sign * baseline_sign * 0.1 * rescale_fac
 
             inputs["stereo_T"] = torch.from_numpy(stereo_T)
-            # if do_flip:
-            #     inputs["ssim_mask_indicator"] = torch.Tensor([1])
-            # else:
-            #     inputs["ssim_mask_indicator"] = torch.Tensor([-1])
+
         if self.mask is not None:
             if side == 'l':
                 spec_mask = self.mask['left']
