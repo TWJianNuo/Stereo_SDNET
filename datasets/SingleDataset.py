@@ -221,16 +221,31 @@ class SingleDataset(data.Dataset):
         # self.preprocess(inputs, color_aug)
 
         if self.load_depth:
-            depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
+            if self.direction_left:
+                if do_flip:
+                    depth_gt = self.get_depth(folder, frame_index, 'r', do_flip)
+                else:
+                    depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
+            else:
+                if do_flip:
+                    depth_gt = self.get_depth(folder, frame_index, 'l', do_flip)
+                else:
+                    depth_gt = self.get_depth(folder, frame_index, 'r', do_flip)
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
         if self.load_seman:
             # (self, folder, frame_index, side, do_flip)
-            if do_flip:
-                seman_gt, _ = self.get_seman(folder, frame_index, 'r', do_flip)
+            if self.direction_left:
+                if do_flip:
+                    seman_gt, _ = self.get_seman(folder, frame_index, 'r', do_flip)
+                else:
+                    seman_gt, _ = self.get_seman(folder, frame_index, 'l', do_flip)
             else:
-                seman_gt, _ = self.get_seman(folder, frame_index, 'l', do_flip)
+                if do_flip:
+                    seman_gt, _ = self.get_seman(folder, frame_index, 'l', do_flip)
+                else:
+                    seman_gt, _ = self.get_seman(folder, frame_index, 'r', do_flip)
             if seman_gt is not None:
                 inputs["seman_gt_eval"] = seman_gt
                 inputs["seman_gt"] = torch.from_numpy(np.expand_dims(np.array(self.seman_resize(Image.fromarray(seman_gt))), 0).astype(np.int))
