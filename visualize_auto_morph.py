@@ -56,10 +56,10 @@ def evaluate(opt):
         opt.frame_ids.append("s")
     if opt.dataset == 'cityscape':
         dataset = datasets.CITYSCAPERawDataset(opt.data_path, filenames,
-                                           opt.height, opt.width, opt.frame_ids, 4, is_train=False, tag=opt.dataset, load_meta=True)
+                                           opt.height, opt.width, opt.frame_ids, 4, is_train=False, tag=opt.dataset, load_meta=True, direction_left=opt.direction_left)
     elif opt.dataset == 'kitti':
         dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
-                                           opt.height, opt.width, opt.frame_ids, 4, is_train=False, tag=opt.dataset, is_load_semantics=opt.use_kitti_gt_semantics, is_predicted_semantics=opt.is_predicted_semantics)
+                                           opt.height, opt.width, opt.frame_ids, 4, is_train=False, tag=opt.dataset, is_load_semantics=opt.use_kitti_gt_semantics, is_predicted_semantics=opt.is_predicted_semantics, direction_left=opt.direction_left)
     else:
         raise ValueError("No predefined dataset")
     dataloader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers,
@@ -134,7 +134,7 @@ def evaluate(opt):
                 overlay_processed = pil.fromarray((np.array(fig_disp_processed) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
                 overlay_org = pil.fromarray((np.array(fig_disp) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
                 combined_fig = pil.fromarray(np.concatenate([np.array(overlay_org), np.array(overlay_processed), np.array(fig_disp), np.array(fig_disp_processed)], axis=0))
-                combined_fig.save("/media/shengjie/other/sceneUnderstanding/SDNET/visualization/border_morph_l2_3/" + str(idx) + ".png")
+                combined_fig.save("/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/visualization/border_morph_l2_3/" + str(idx) + ".png")
             if viewCudaVer:
                 # morphedx, morphedy = bnmorph.find_corresponding_pts(disparity_grad_bin, semantics_grad_bin, disparityMap, fig_seman, 10)
                 # morphedx = (morphedx / (opt.width - 1) - 0.5) * 2
@@ -147,7 +147,7 @@ def evaluate(opt):
                 # fig_combined.show()
                 svpath = os.path.join(opt.load_weights_folder).split('/')
                 try:
-                    svpath = os.path.join("/media/shengjie/other/sceneUnderstanding/SDNET/visualization", svpath[-3])
+                    svpath = os.path.join("/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/visualization", svpath[-3])
                     os.mkdir(svpath)
                 except FileExistsError:
                     a = 1

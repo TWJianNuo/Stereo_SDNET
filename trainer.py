@@ -1179,7 +1179,7 @@ class Trainer:
                                             mask=outputs['selector_mask'])
 
                         else:
-                            self.record_img(disp=outputs['disp', 0], semantic_gt=inputs['seman_gt'])
+                            self.record_img(disp=outputs['disp', 0], semantic_gt=inputs['seman_gt'], inputs= inputs, outputs=outputs)
             self.step += 1
 
     def process_batch(self, inputs):
@@ -1217,9 +1217,16 @@ class Trainer:
             outputs.update(self.models["depth"](features, computeSemantic = False, computeDepth = True))
 
         self.merge_multDisp(inputs, outputs)
+        # tensor2disp(outputs[('disp', 0)], ind=0).show()
         if not banDepthFlag:
             self.generate_images_pred(inputs, outputs)
         losses = self.compute_losses(inputs, outputs)
+        # tensor2rgb(outputs[('color', 's', 0)], ind=0).show()
+        # for i in range(self.opt.batch_size):
+        #     fig1 = tensor2rgb(inputs[('color', 0, 0)], ind=i)
+        #     fig2 = tensor2rgb(outputs[('color', 's', 0)], ind=i)
+        #     fig_combined = pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0))
+        #     fig_combined.show()
         return outputs, losses
     def is_regress_dispLoss(self, inputs, outputs):
         # if there are stereo images, we compute depth
@@ -1691,8 +1698,8 @@ class Trainer:
         print(print_string.format(self.epoch, batch_idx, samples_per_sec, loss_semantic, loss_depth, loss_tot,
                                   sec_to_hm_str(time_sofar), sec_to_hm_str(training_time_left)))
 
-    def record_img(self, disp, semantic_gt, disp_morphed = None, mask = None):
-        dirpath = os.path.join("/media/shengjie/other/sceneUnderstanding/SDNET/visualization", self.opt.model_name)
+    def record_img(self, disp, semantic_gt, disp_morphed = None, mask = None, inputs = None, outputs = None):
+        dirpath = os.path.join("/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/visualization", self.opt.model_name)
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
 
@@ -1725,8 +1732,10 @@ class Trainer:
             combined_fig = pil.fromarray(np.concatenate(
                 [np.array(overlay_org), np.array(fig_disp), np.array(overlay_dst), np.array(fig_disp_morphed), np.array(fig_disp_masked_overlay)], axis=0))
         else:
+            fig1 = tensor2rgb(inputs[('color', 0, 0)], ind=viewIndex)
+            fig2 = tensor2rgb(outputs[('color', 's', 0)], ind=viewIndex)
             combined_fig = pil.fromarray(np.concatenate(
-                [np.array(overlay_org), np.array(fig_disp)], axis=0))
+                [np.array(overlay_org), np.array(fig_disp), np.array(fig1), np.array(fig2)], axis=0))
         combined_fig.save(
             dirpath + '/' + str(self.step) + ".png")
 
