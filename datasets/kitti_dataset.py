@@ -133,7 +133,7 @@ class KITTIDataset(SingleDataset):
 class KITTIRAWDataset(KITTIDataset):
     """KITTI dataset which loads the original velodyne depth maps for ground truth
     """
-    def __init__(self, data_path, filenames, height, width, frame_idxs, num_scales, tag, is_train=False, img_ext='.png', load_depth = False, load_meta = False, is_load_semantics = False, is_predicted_semantics = False, load_morphed_depth = False, read_stereo = False, direction_left = True):
+    def __init__(self, data_path, filenames, height, width, frame_idxs, num_scales, tag, is_train=False, img_ext='.png', load_depth = False, load_meta = False, is_load_semantics = False, is_predicted_semantics = False, load_morphed_depth = False, read_stereo = False, direction_left = True, outputtwoimage = False):
         self.load_seman = is_load_semantics
         self.read_stereo = read_stereo
         super(KITTIRAWDataset, self).__init__(data_path, filenames, height, width, frame_idxs, num_scales, tag, is_train, img_ext='.png')
@@ -141,6 +141,7 @@ class KITTIRAWDataset(KITTIDataset):
         self.load_meta = load_meta
         self.load_morphed_depth = load_morphed_depth
         self.direction_left = direction_left
+        self.outputtwoimage = outputtwoimage
         if load_meta:
             self.semanticDataset = '/media/shengjie/other/sceneUnderstanding/monodepth2/kitti_data/kitti_semantics'
             with open('/media/shengjie/other/sceneUnderstanding/monodepth2/splits/train_mapping.txt') as f:

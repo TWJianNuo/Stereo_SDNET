@@ -15,12 +15,16 @@ from layers import *
 
 
 class DepthDecoder(nn.Module):
-    def __init__(self, num_ch_enc, scales=range(4), isMulChannel = False, use_skips=True, isSwitch = False):
+    def __init__(self, num_ch_enc, scales=range(4), isMulChannel = False, use_skips=True, isSwitch = False, outputtwoimage = False):
         super(DepthDecoder, self).__init__()
 
         semanticType = 19
         if isMulChannel:
             self.num_output_channels = semanticType
+        else:
+            self.num_output_channels = 1
+        if outputtwoimage:
+            self.num_output_channels = 2
         else:
             self.num_output_channels = 1
         self.use_skips = use_skips

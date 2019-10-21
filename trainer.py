@@ -84,7 +84,7 @@ class Trainer:
         self.parameters_to_train += list(self.models["encoder"].parameters())
         # print("2")
         self.models["depth"] = networks.DepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel)
+            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel, outputtwoimage = self.opt.outputtwoimage)
         self.models["depth"].to(self.device)
 
         # print("3")
@@ -242,13 +242,13 @@ class Trainer:
 
             train_dataset = initFunc(
                 datapath_set[i], train_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo, direction_left=self.opt.direction_left)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo, outputtwoimage = self.opt.outputtwoimage)
             train_sample_num[i] = train_dataset.__len__()
             stacked_train_datasets.append(train_dataset)
 
             val_dataset = initFunc(
                 datapath_set[i], val_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, direction_left=self.opt.direction_left)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, direction_left=self.opt.direction_left, outputtwoimage = self.opt.outputtwoimage)
             val_sample_num[i] = val_dataset.__len__()
             stacked_val_datasets.append(val_dataset)
 
@@ -507,6 +507,7 @@ class Trainer:
         # banDepthFlag = 'cityscape' in tags and not self.opt.predictboth
         banDepthFlag = 'cityscape' in tags
         all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
+
         # tensor2rgb(inputs[("color_aug", 0, 0)], ind=0).show()
         # tensor2rgb(inputs[("color_aug", 's', 0)], ind=0).show()
         #
@@ -518,6 +519,48 @@ class Trainer:
         #
         # tensor2rgb(inputs[("color_aug", 0, 0)], ind=3).show()
         # tensor2rgb(inputs[("color_aug", 's', 0)], ind=3).show()
+        #
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,0:1,:,:], ind=0)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 0, 0)], ind=0)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,1:2,:,:], ind=0)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 's', 0)], ind=0)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        #
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,0:1,:,:], ind=1)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 0, 0)], ind=1)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,1:2,:,:], ind=1)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 's', 0)], ind=1)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        #
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,0:1,:,:], ind=2)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 0, 0)], ind=2)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,1:2,:,:], ind=2)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 's', 0)], ind=2)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        #
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,0:1,:,:], ind=3)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 0, 0)], ind=3)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        # fig1s = tensor2semantic(inputs['seman_gt'][:,1:2,:,:], ind=3)
+        # fig1rgb = tensor2rgb(inputs[("color_aug", 's', 0)], ind=3)
+        # combined_2_img(fig1s, fig1rgb, 0.3).show()
+        #
+        # tensor2disp(inputs['depth_gt'][:,0:1,:,:], ind=0, vmax=1).show()
+        # tensor2disp(inputs['depth_gt'][:, 1:2, :, :], ind=0, vmax=1).show()
+        #
+        # tensor2disp(inputs['depth_gt'][:,0:1,:,:], ind=1, vmax=1).show()
+        # tensor2disp(inputs['depth_gt'][:, 1:2, :, :], ind=1, vmax=1).show()
+        #
+        # tensor2disp(inputs['depth_gt'][:,0:1,:,:], ind=2, vmax=1).show()
+        # tensor2disp(inputs['depth_gt'][:, 1:2, :, :], ind=2, vmax=1).show()
+        #
+        # tensor2disp(inputs['depth_gt'][:,0:1,:,:], ind=3, vmax=1).show()
+        # tensor2disp(inputs['depth_gt'][:, 1:2, :, :], ind=3, vmax=1).show()
+
+
         features = self.models["encoder"](all_color_aug)
         outputs = dict()
 
@@ -534,7 +577,10 @@ class Trainer:
         # tensor2disp(outputs[('disp', 0)], ind=0).show()
         if not banDepthFlag:
             self.generate_images_pred(inputs, outputs)
-        losses = self.compute_losses(inputs, outputs)
+        if not self.opt.outputtwoimage:
+            losses = self.compute_losses(inputs, outputs)
+        else:
+            losses = self.compute_losses_two(inputs, outputs)
         # tensor2rgb(outputs[('color', 's', 0)], ind=0).show()
         # for i in range(self.opt.batch_size):
         #     fig1 = tensor2rgb(inputs[('color', 0, 0)], ind=i)
@@ -583,40 +629,111 @@ class Trainer:
         tag = inputs['tag'][0]
         height = inputs["height"][0]
         width = inputs["width"][0]
+        frame_id = "s"
         for scale in self.opt.scales:
-            disp = outputs[("disp", scale)]
-            if self.opt.v1_multiscale:
-                source_scale = scale
+            if not self.opt.outputtwoimage:
+                disp = outputs[("disp", scale)]
+                if self.opt.v1_multiscale:
+                    source_scale = scale
+                else:
+                    disp = F.interpolate(disp, [height, width], mode="bilinear", align_corners=False)
+                    source_scale = 0
+
+                scaledDisp, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
+
+                outputs[("depth", 0, scale)] = depth
+
+
+                T = inputs["stereo_T"]
+                cam_points = self.backproject_depth[(tag, source_scale)](
+                    depth, inputs[("inv_K", source_scale)])
+                pix_coords = self.project_3d[(tag, source_scale)](
+                    cam_points, inputs[("K", source_scale)], T)
+
+
+                outputs[("sample", frame_id, scale)] = pix_coords
+                if scale == 0:
+                    grad_proj_msak = (pix_coords[:,:,:,0] > -1) * (pix_coords[:,:,:,1] > -1) * (pix_coords[:, :, :, 0] < 1) * (pix_coords[:, :, :, 1] < 1)
+                    grad_proj_msak = grad_proj_msak.unsqueeze(1).float()
+                    outputs['grad_proj_msak'] = grad_proj_msak
+
+                outputs[("color", frame_id, scale)] = F.grid_sample(
+                    inputs[("color", frame_id, source_scale)],
+                    outputs[("sample", frame_id, scale)],
+                    padding_mode="border")
+
+                outputs[("disp", scale)] = disp
+                if scale == 0:
+                    outputs[("real_scale_disp", scale)] = scaledDisp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1, 1).expand_as(scaledDisp))
             else:
-                disp = F.interpolate(disp, [height, width], mode="bilinear", align_corners=False)
-                source_scale = 0
+                depth_rec = []
+                pix_coords_rec = []
+                grad_proj_msak_rec = []
+                color_rec = []
+                real_scale_disp_rec = []
+                resized_disp_rec = []
+                for k in range(2):
+                    resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale)
+                    depth_rec.append(depth)
+                    pix_coords_rec.append(pix_coords)
+                    grad_proj_msak_rec.append(grad_proj_msak)
+                    color_rec.append(reconstructed_color)
+                    real_scale_disp_rec.append(real_scale_disp)
+                    resized_disp_rec.append(resized_disp)
+                depth_rec = torch.cat(depth_rec, dim=1)
+                pix_coords_rec = torch.stack(pix_coords_rec, dim=1)
+                outputs[("depth", 0, scale)] = depth_rec
+                outputs[("sample", frame_id, scale)] = pix_coords_rec
+                if scale == 0:
+                    outputs['grad_proj_msak'] = torch.cat(grad_proj_msak_rec, dim = 1)
+                    outputs[("real_scale_disp", scale)] = torch.cat(real_scale_disp_rec, dim=1)
+                outputs[("color", frame_id, scale)] = torch.cat(color_rec, dim = 1)
+                outputs[('disp', scale)] = torch.cat(resized_disp_rec, dim = 1)
+    def generate_images_pred_func(self, inputs, outputs, k, scale):
+        tag = inputs['tag'][0]
+        height = inputs["height"][0]
+        width = inputs["width"][0]
+        disp = outputs[("disp", scale)][:, k:k + 1, :, :]
+        T = inputs["stereo_T"]
+        if self.opt.v1_multiscale:
+            source_scale = scale
+        else:
+            disp = F.interpolate(disp, [height, width], mode="bilinear", align_corners=False)
+            source_scale = 0
 
-            scaledDisp, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
+        scaledDisp, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
-            outputs[("depth", 0, scale)] = depth
+        # outputs[("depth", 0, scale)] = depth
 
-            frame_id = "s"
-            T = inputs["stereo_T"]
-            cam_points = self.backproject_depth[(tag, source_scale)](
-                depth, inputs[("inv_K", source_scale)])
-            pix_coords = self.project_3d[(tag, source_scale)](
-                cam_points, inputs[("K", source_scale)], T)
+        frame_id = "s"
+        T = inputs["stereo_T"]
+        cam_points = self.backproject_depth[(tag, source_scale)](
+            depth, inputs[("inv_K", source_scale)])
+        pix_coords = self.project_3d[(tag, source_scale)](
+            cam_points, inputs[("K", source_scale)], T)
 
+        # outputs[("sample", frame_id, scale)] = pix_coords
+        if scale == 0:
+            grad_proj_msak = (pix_coords[:, :, :, 0] > -1) * (pix_coords[:, :, :, 1] > -1) * (
+                    pix_coords[:, :, :, 0] < 1) * (pix_coords[:, :, :, 1] < 1)
+            grad_proj_msak = grad_proj_msak.unsqueeze(1).float()
+            # outputs['grad_proj_msak'] = grad_proj_msak
+        else:
+            grad_proj_msak = None
 
-            outputs[("sample", frame_id, scale)] = pix_coords
-            if scale == 0:
-                grad_proj_msak = (pix_coords[:,:,:,0] > -1) * (pix_coords[:,:,:,1] > -1) * (pix_coords[:, :, :, 0] < 1) * (pix_coords[:, :, :, 1] < 1)
-                grad_proj_msak = grad_proj_msak.unsqueeze(1).float()
-                outputs['grad_proj_msak'] = grad_proj_msak
+        if scale == 0:
+            real_scale_disp = scaledDisp * (
+                torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1,
+                                                                                  1).expand_as(scaledDisp))
+        else:
+            real_scale_disp = None
 
-            outputs[("color", frame_id, scale)] = F.grid_sample(
-                inputs[("color", frame_id, source_scale)],
-                outputs[("sample", frame_id, scale)],
-                padding_mode="border")
+        reconstructed_color = F.grid_sample(
+            inputs[("color", frame_id, source_scale)],
+            pix_coords,
+            padding_mode="border")
+        return disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp
 
-            outputs[("disp", scale)] = disp
-            if scale == 0:
-                outputs[("real_scale_disp", scale)] = scaledDisp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1, 1).expand_as(scaledDisp))
     def compute_reprojection_loss(self, pred, target):
         """Computes reprojection loss between a batch of predicted and target images
         """
@@ -644,6 +761,70 @@ class Trainer:
             reprojection_loss = 0.85 * ssim_loss + 0.15 * l1_loss
 
         return reprojection_loss
+    def compute_losses_two(self, inputs, outputs):
+        losses = {}
+        ssimLossMean = 0
+        loss = 0
+        source_scale = 0
+        frame_id = 's'
+        # if self.opt.selfocclu:
+        #     sourceSSIMMask1 = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:,0:1,:,:], inputs['stereo_T'][:, 0, 3])
+        #     sourceSSIMMask2 = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 1:2, :, :],-inputs['stereo_T'][:, 0, 3])
+        #     outputs['ssimMask'] = torch.cat([sourceSSIMMask1, sourceSSIMMask2], dim=1)
+
+        # for left
+        target = inputs[("color", 0, source_scale)]
+        stereo_cp = inputs[("color", 's', source_scale)]
+        sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 0:1, :, :],inputs['stereo_T'][:, 0, 3])
+        for scale in self.opt.scales:
+            # For left
+            pred = outputs[("color", frame_id, scale)][:, 0: 3, :, :]
+            reprojection_loss = self.compute_reprojection_loss(pred, target)
+            identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
+            combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+            to_optimise, idxs = torch.min(combined, dim=1)
+            to_optimise = (1 - sourceSSIMMask.squeeze(1)) * to_optimise
+            ssimLoss = to_optimise.mean()
+
+            loss += ssimLoss
+            ssimLossMean += ssimLoss
+
+            mult_disp = outputs[('disp', scale)][:, 0:1, :, :]
+            mean_disp = mult_disp.mean(2, True).mean(3, True)
+            norm_disp = mult_disp / (mean_disp + 1e-7)
+            smooth_loss = get_smooth_loss(norm_disp, target)
+            loss = loss + self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+
+        # for right
+        target = inputs[("color", 's', source_scale)]
+        stereo_cp = inputs[("color", 0, source_scale)]
+        sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 1:2, :, :], -inputs['stereo_T'][:, 0, 3])
+        for scale in self.opt.scales:
+            # For left
+            pred = outputs[("color", frame_id, scale)][:, 3: 6, :, :]
+            reprojection_loss = self.compute_reprojection_loss(pred, target)
+            identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
+            combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+            to_optimise, idxs = torch.min(combined, dim=1)
+            to_optimise = (1 - sourceSSIMMask.squeeze(1)) * to_optimise
+            ssimLoss = to_optimise.mean()
+
+            loss += ssimLoss
+            ssimLossMean += ssimLoss
+
+            mult_disp = outputs[('disp', scale)][:, 1:2, :, :]
+            mean_disp = mult_disp.mean(2, True).mean(3, True)
+            norm_disp = mult_disp / (mean_disp + 1e-7)
+            smooth_loss = get_smooth_loss(norm_disp, target)
+            loss = loss + self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+
+        loss = loss / self.num_scales / 2
+        losses["loss_depth"] = ssimLossMean / self.num_scales / 2
+
+        losses["totLoss"] = loss
+        return losses
+
+
     def compute_losses(self, inputs, outputs):
         """Compute the reprojection and smoothness losses for a minibatch
         """
@@ -948,7 +1129,8 @@ class Trainer:
         dirpath = os.path.join("/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/visualization", self.opt.model_name)
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
-
+        disp = torch.cat([outputs[('disp', 0)][:,0:1,:,:], outputs[('disp', 0)][:,1:2,:,:]], dim = 3)
+        semantic_gt = torch.cat([inputs['seman_gt'][:,0:1,:,:], inputs['seman_gt'][:,1:2,:,:]], dim = 3)
         viewIndex = 0
         fig_seman = tensor2semantic(semantic_gt, ind=viewIndex, isGt=True)
         fig_disp = tensor2disp(disp, ind=viewIndex, vmax=0.09)
@@ -963,26 +1145,21 @@ class Trainer:
         # plt.figure()
         # plt.imshow(overlay_org)
 
-        if disp_morphed is not None:
-            fig_disp_morphed = tensor2disp(disp_morphed, ind=viewIndex, vmax=0.09)
-            overlay_dst = pil.fromarray((np.array(fig_disp_morphed) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
-
-            disp_masked = disp * mask
-            fig_disp_masked = tensor2disp(disp_masked, vmax=0.09, ind=viewIndex)
-            fig_disp_masked_overlay = pil.fromarray((np.array(fig_disp_masked) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
-            # mask_np = mask[viewIndex, 0, :, :].detach().cpu().numpy()
-            # tensor2disp(mask, vmax=1, ind=0).show()
-            # fig_disp = pil.fromarray((np.array(fig_disp) * np.expand_dims(mask_np, 2).repeat(3, 2)).astype(np.uint8))
-
-
-            combined_fig = pil.fromarray(np.concatenate(
-                [np.array(overlay_org), np.array(fig_disp), np.array(overlay_dst), np.array(fig_disp_morphed), np.array(fig_disp_masked_overlay)], axis=0))
-        else:
-            fig1 = tensor2rgb(inputs[('color', 0, 0)], ind=viewIndex)
-            fig2 = tensor2rgb(outputs[('color', 's', 0)], ind=viewIndex)
-            combined_fig = pil.fromarray(np.concatenate(
-                [np.array(overlay_org), np.array(fig_disp), np.array(fig1), np.array(fig2)], axis=0))
-        combined_fig.save(
+        # if disp_morphed is not None:
+        #     fig_disp_morphed = tensor2disp(disp_morphed, ind=viewIndex, vmax=0.09)
+        #     overlay_dst = pil.fromarray((np.array(fig_disp_morphed) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
+        #
+        #     disp_masked = disp * mask
+        #     fig_disp_masked = tensor2disp(disp_masked, vmax=0.09, ind=viewIndex)
+        #     fig_disp_masked_overlay = pil.fromarray((np.array(fig_disp_masked) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
+        #     combined_fig = pil.fromarray(np.concatenate(
+        #         [np.array(overlay_org), np.array(fig_disp), np.array(overlay_dst), np.array(fig_disp_morphed), np.array(fig_disp_masked_overlay)], axis=0))
+        # else:
+        #     fig1 = tensor2rgb(inputs[('color', 0, 0)], ind=viewIndex)
+        #     fig2 = tensor2rgb(outputs[('color', 's', 0)], ind=viewIndex)
+        #     combined_fig = pil.fromarray(np.concatenate(
+        #         [np.array(overlay_org), np.array(fig_disp), np.array(fig1), np.array(fig2)], axis=0))
+        overlay_org.save(
             dirpath + '/' + str(self.step) + ".png")
 
     def log(self, mode, inputs, outputs, losses, writeImage = False):
