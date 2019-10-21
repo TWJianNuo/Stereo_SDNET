@@ -248,7 +248,7 @@ class Trainer:
 
             val_dataset = initFunc(
                 datapath_set[i], val_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, direction_left=self.opt.direction_left, outputtwoimage = self.opt.outputtwoimage)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, outputtwoimage = self.opt.outputtwoimage)
             val_sample_num[i] = val_dataset.__len__()
             stacked_val_datasets.append(val_dataset)
 
