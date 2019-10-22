@@ -674,9 +674,9 @@ class Trainer:
                 resized_disp_rec = []
                 for k in range(2):
                     if k == 0:
-                        sign = 1
-                    else:
                         sign = -1
+                    else:
+                        sign = 1
                     resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale, sign = sign)
                     depth_rec.append(depth)
                     pix_coords_rec.append(pix_coords)
@@ -781,7 +781,6 @@ class Trainer:
         stereo_cp = inputs[("color", 's', source_scale)]
         sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 0:1, :, :],inputs['stereo_T'][:, 0, 3])
         for scale in self.opt.scales:
-            # For left
             pred = outputs[("color", frame_id, scale)][:, 0: 3, :, :]
             reprojection_loss = self.compute_reprojection_loss(pred, target)
             identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
@@ -804,7 +803,6 @@ class Trainer:
         stereo_cp = inputs[("color", 0, source_scale)]
         sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 1:2, :, :], -inputs['stereo_T'][:, 0, 3])
         for scale in self.opt.scales:
-            # For left
             pred = outputs[("color", frame_id, scale)][:, 3: 6, :, :]
             reprojection_loss = self.compute_reprojection_loss(pred, target)
             identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
