@@ -666,6 +666,24 @@ class Trainer:
                 if scale == 0:
                     outputs[("real_scale_disp", scale)] = scaledDisp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1, 1).expand_as(scaledDisp))
             else:
+
+                # a = 1
+                # left_prediction = pickle.load(open("left_prediction.p", "rb"))
+                # right_prediction = pickle.load(open("right_prediction.p", "rb"))
+                # outputs['disp', 0] = torch.cat([left_prediction, right_prediction], dim=1)
+                # outputs['disp', 0] = torch.cat([outputs['disp', 0], outputs['disp', 0]], dim=0)
+                # outputs['disp', 0] = outputs['disp', 0].cuda()
+                #
+                # disp = torch.cat([outputs[('disp', 0)][:, 0:1, :, :], outputs[('disp', 0)][:, 1:2, :, :]], dim=3)
+                # semantic_gt = torch.cat([inputs['seman_gt'][:, 0:1, :, :], inputs['seman_gt'][:, 1:2, :, :]], dim=3)
+                # rgb_tensor = torch.cat([inputs[('color', 0, 0)], inputs[('color', 's', 0)]], dim=3)
+                # viewIndex = 0
+                # fig_seman = tensor2semantic(semantic_gt, ind=viewIndex, isGt=True)
+                # fig_disp = tensor2disp(disp, ind=viewIndex, vmax=0.09)
+                # fig_rgb = tensor2rgb(rgb_tensor, ind=viewIndex)
+                # overlay_org = pil.fromarray((np.array(fig_disp) * 0.7 + np.array(fig_seman) * 0.3).astype(np.uint8))
+                # combined_img = pil.fromarray(np.concatenate([np.array(fig_disp), np.array(fig_rgb), np.array(overlay_org)], axis=0))
+
                 depth_rec = []
                 pix_coords_rec = []
                 grad_proj_msak_rec = []
@@ -693,6 +711,10 @@ class Trainer:
                     outputs[("real_scale_disp", scale)] = torch.cat(real_scale_disp_rec, dim=1)
                 outputs[("color", frame_id, scale)] = torch.cat(color_rec, dim = 1)
                 outputs[('disp', scale)] = torch.cat(resized_disp_rec, dim = 1)
+
+                # rgb_tensor_recon = torch.cat([outputs[("color", frame_id, scale)][:,0:3,:,:], outputs[("color", frame_id, scale)][:,3:6,:,:]], dim=3)
+                # rgb_tensor_recon = tensor2rgb(rgb_tensor_recon, ind = viewIndex)
+                # tensor2rgb(outputs[("color", frame_id, scale)], ind=viewIndex).show()
     def generate_images_pred_func(self, inputs, outputs, k, scale, sign):
         tag = inputs['tag'][0]
         height = inputs["height"][0]
@@ -732,11 +754,16 @@ class Trainer:
                                                                                   1).expand_as(scaledDisp))
         else:
             real_scale_disp = None
-
-        reconstructed_color = F.grid_sample(
-            inputs[("color", frame_id, source_scale)],
-            pix_coords,
-            padding_mode="border")
+        if sign == 1:
+            reconstructed_color = F.grid_sample(
+                inputs[("color", 's', source_scale)],
+                pix_coords,
+                padding_mode="border")
+        else:
+            reconstructed_color = F.grid_sample(
+                inputs[("color", 0, source_scale)],
+                pix_coords,
+                padding_mode="border")
         return disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp
 
     def compute_reprojection_loss(self, pred, target):
@@ -1092,7 +1119,15 @@ class Trainer:
         This isn't particularly accurate as it averages over the entire batch,
         so is only used to give an indication of validation performance
         """
+
+        # left_prediction = pickle.load(open("left_prediction.p", "rb"))
+        # right_prediction = pickle.load(open("right_prediction.p", "rb"))
+        # outputs['disp', 0] = torch.cat([left_prediction, right_prediction], dim=1)
+        # outputs['disp', 0] = torch.cat([outputs['disp', 0], outputs['disp', 0]], dim=0)
+        # outputs['disp', 0] = outputs['disp', 0].cuda()
+
         depth_pred = outputs[("depth", 0, 0)]
+        # tensor2disp(depth_pred, percentile=95, ind=0).show()
         depth_pred = torch.clamp(F.interpolate(
             depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
         depth_pred = depth_pred.detach()
