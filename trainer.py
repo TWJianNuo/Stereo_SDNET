@@ -899,7 +899,7 @@ class Trainer:
                 # a = (1 - torch.cat([sourceSSIMMaskl, sourceSSIMMaskr], dim=1))
                 # tensor2disp(a[:,0:1,:,:], vmax=1, ind=0).show()
             loss = loss + lr_loss / 4
-
+            losses["lrloss"] = lr_loss / 4
         losses["totLoss"] = loss
         return losses
 
