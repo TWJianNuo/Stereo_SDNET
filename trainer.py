@@ -673,7 +673,11 @@ class Trainer:
                 real_scale_disp_rec = []
                 resized_disp_rec = []
                 for k in range(2):
-                    resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale)
+                    if k == 0:
+                        sign = 1
+                    else:
+                        sign = -1
+                    resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale, sign = sign)
                     depth_rec.append(depth)
                     pix_coords_rec.append(pix_coords)
                     grad_proj_msak_rec.append(grad_proj_msak)
@@ -689,7 +693,7 @@ class Trainer:
                     outputs[("real_scale_disp", scale)] = torch.cat(real_scale_disp_rec, dim=1)
                 outputs[("color", frame_id, scale)] = torch.cat(color_rec, dim = 1)
                 outputs[('disp', scale)] = torch.cat(resized_disp_rec, dim = 1)
-    def generate_images_pred_func(self, inputs, outputs, k, scale):
+    def generate_images_pred_func(self, inputs, outputs, k, scale, sign):
         tag = inputs['tag'][0]
         height = inputs["height"][0]
         width = inputs["width"][0]
@@ -706,7 +710,7 @@ class Trainer:
         # outputs[("depth", 0, scale)] = depth
 
         frame_id = "s"
-        T = inputs["stereo_T"]
+        T = sign * inputs["stereo_T"]
         cam_points = self.backproject_depth[(tag, source_scale)](
             depth, inputs[("inv_K", source_scale)])
         pix_coords = self.project_3d[(tag, source_scale)](
