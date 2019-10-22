@@ -698,12 +698,13 @@ class Trainer:
                 color_rec = []
                 real_scale_disp_rec = []
                 resized_disp_rec = []
+                reconstructed_disp_rec = []
                 for k in range(2):
                     if k == 0:
                         sign = 1
                     else:
                         sign = -1
-                    resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale, sign = sign)
+                    resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp, reconstructed_disp = self.generate_images_pred_func(inputs, outputs, k, scale, sign = sign)
                     # tensor2rgb(reconstructed_color, ind=0).show()
                     depth_rec.append(depth)
                     pix_coords_rec.append(pix_coords)
@@ -711,6 +712,7 @@ class Trainer:
                     color_rec.append(reconstructed_color)
                     real_scale_disp_rec.append(real_scale_disp)
                     resized_disp_rec.append(resized_disp)
+                    reconstructed_disp_rec.append(reconstructed_disp)
                     # tensor2rgb(inputs[('color', 's', 0)], ind=0).show()
                 depth_rec = torch.cat(depth_rec, dim=1)
                 pix_coords_rec = torch.stack(pix_coords_rec, dim=1)
@@ -721,7 +723,10 @@ class Trainer:
                     outputs[("real_scale_disp", scale)] = torch.cat(real_scale_disp_rec, dim=1)
                 outputs[("color", frame_id, scale)] = torch.cat(color_rec, dim = 1)
                 outputs[('disp', scale)] = torch.cat(resized_disp_rec, dim = 1)
-
+                if self.opt.lr_regularization:
+                    outputs[("lr_disp", scale)] = torch.cat(reconstructed_disp_rec, dim=1)
+                    # fig11 = tensor2disp(torch.cat([outputs[('disp', scale)][:,0:1,:,:], outputs[('disp', scale)][:,1:2,:,:]], dim=3), vmax=0.1, ind=0)
+                    # fig12 = tensor2disp(torch.cat([outputs[('lr_disp', scale)][:, 0:1, :, :], outputs[('lr_disp', scale)][:, 1:2, :, :]],dim=3), vmax=0.1, ind=0)
                 # rgb_tensor_recon = torch.cat([outputs[("color", frame_id, scale)][:,0:3,:,:], outputs[("color", frame_id, scale)][:,3:6,:,:]], dim=3)
                 # rgb_tensor_recon = tensor2rgb(rgb_tensor_recon, ind = 0)
                 # rgb_tensor_recon.show()
@@ -777,7 +782,20 @@ class Trainer:
                 inputs[("color", 0, source_scale)],
                 pix_coords,
                 padding_mode="border")
-        return disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp
+
+        if self.opt.lr_regularization:
+            if sign == 1:
+                tmpdisp = F.interpolate(outputs[("disp", scale)][:,1:2,:,:], [height, width], mode="bilinear", align_corners=False)
+
+            else:
+                tmpdisp = F.interpolate(outputs[("disp", scale)][:, 0:1, :, :], [height, width], mode="bilinear", align_corners=False)
+            reconstructed_disp = F.grid_sample(
+                tmpdisp,
+                pix_coords,
+                padding_mode="border")
+        else:
+            reconstructed_disp = None
+        return disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp, reconstructed_disp
 
     def compute_reprojection_loss(self, pred, target):
         """Computes reprojection loss between a batch of predicted and target images
@@ -820,7 +838,7 @@ class Trainer:
         # for left
         target = inputs[("color", 0, source_scale)]
         stereo_cp = inputs[("color", 's', source_scale)]
-        sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 0:1, :, :],inputs['stereo_T'][:, 0, 3])
+        sourceSSIMMaskl = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 0:1, :, :],inputs['stereo_T'][:, 0, 3])
         # tensor2disp(sourceSSIMMask, vmax=1, ind=0).show()
         for scale in self.opt.scales:
             pred = outputs[("color", frame_id, scale)][:, 0: 3, :, :]
@@ -828,7 +846,7 @@ class Trainer:
             identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
             combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             to_optimise, idxs = torch.min(combined, dim=1)
-            to_optimise = (1 - sourceSSIMMask.squeeze(1)) * to_optimise
+            to_optimise = (1 - sourceSSIMMaskl.squeeze(1)) * to_optimise
             ssimLoss = to_optimise.mean()
             # print(ssimLoss)
             loss += ssimLoss
@@ -839,11 +857,12 @@ class Trainer:
             norm_disp = mult_disp / (mean_disp + 1e-7)
             smooth_loss = get_smooth_loss(norm_disp, target)
             loss = loss + self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+
             # print(smooth_loss)
         # for right
         target = inputs[("color", 's', source_scale)]
         stereo_cp = inputs[("color", 0, source_scale)]
-        sourceSSIMMask = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 1:2, :, :], -inputs['stereo_T'][:, 0, 3])
+        sourceSSIMMaskr = self.selfOccluMask(outputs[('real_scale_disp', source_scale)][:, 1:2, :, :], -inputs['stereo_T'][:, 0, 3])
         # tensor2disp(sourceSSIMMask, vmax=1, ind=0).show()
         for scale in self.opt.scales:
             pred = outputs[("color", frame_id, scale)][:, 3: 6, :, :]
@@ -851,7 +870,7 @@ class Trainer:
             identity_reprojection_loss = self.compute_reprojection_loss(stereo_cp, target) + torch.randn(reprojection_loss.shape).cuda() * 0.00001
             combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             to_optimise, idxs = torch.min(combined, dim=1)
-            to_optimise = (1 - sourceSSIMMask.squeeze(1)) * to_optimise
+            to_optimise = (1 - sourceSSIMMaskr.squeeze(1)) * to_optimise
             ssimLoss = to_optimise.mean()
             # print(ssimLoss)
 
@@ -867,6 +886,19 @@ class Trainer:
 
         loss = loss / self.num_scales / 2
         losses["loss_depth"] = ssimLossMean / self.num_scales / 2
+
+
+        if self.opt.lr_regularization:
+            lr_loss = 0
+            for scale in self.opt.scales:
+                tmploss = torch.abs(outputs[('disp', scale)] - outputs[('lr_disp', scale)]) * (1 - torch.cat([sourceSSIMMaskl, sourceSSIMMaskr], dim=1))
+                tmploss = torch.mean(torch.log(1 + tmploss))
+                lr_loss = lr_loss + tmploss
+                # a = outputs[('lr_disp', scale)][:,0:1,:,:] * (1 - sourceSSIMMaskl)
+                # tensor2disp(a, vmax=0.1, ind=0).show()
+                # a = (1 - torch.cat([sourceSSIMMaskl, sourceSSIMMaskr], dim=1))
+                # tensor2disp(a[:,0:1,:,:], vmax=1, ind=0).show()
+            loss = loss + lr_loss / 4
 
         losses["totLoss"] = loss
         return losses

@@ -267,6 +267,12 @@ class MonodepthOptions:
         self.parser.add_argument("--concrete_reg_param",
                                  type=float,
                                  default=0.005)
+        self.parser.add_argument("--lr_regularization",
+                                 action="store_true")
+        self.parser.add_argument("--lr_reg_weight",
+                                 type=float,
+                                 default=1
+                                 )
 
         # SYSTEM options
         self.parser.add_argument("--no_cuda",
