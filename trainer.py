@@ -674,9 +674,9 @@ class Trainer:
                 resized_disp_rec = []
                 for k in range(2):
                     if k == 0:
-                        sign = -1
-                    else:
                         sign = 1
+                    else:
+                        sign = -1
                     resized_disp, depth, pix_coords, grad_proj_msak, reconstructed_color, real_scale_disp = self.generate_images_pred_func(inputs, outputs, k, scale, sign = sign)
                     depth_rec.append(depth)
                     pix_coords_rec.append(pix_coords)
@@ -698,7 +698,7 @@ class Trainer:
         height = inputs["height"][0]
         width = inputs["width"][0]
         disp = outputs[("disp", scale)][:, k:k + 1, :, :]
-        T = inputs["stereo_T"]
+        # T = inputs["stereo_T"]
         if self.opt.v1_multiscale:
             source_scale = scale
         else:
@@ -710,7 +710,8 @@ class Trainer:
         # outputs[("depth", 0, scale)] = depth
 
         frame_id = "s"
-        T = sign * inputs["stereo_T"]
+        T = inputs["stereo_T"]
+        T[:,0,3] = sign * T[:,0,3]
         cam_points = self.backproject_depth[(tag, source_scale)](
             depth, inputs[("inv_K", source_scale)])
         pix_coords = self.project_3d[(tag, source_scale)](
