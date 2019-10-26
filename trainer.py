@@ -620,7 +620,7 @@ class Trainer:
             reconstructed_rgb = F.grid_sample(sample_rgb, pix_coords, padding_mode="border")
             reconstructed_disp = F.grid_sample(outputs[('mul_disp', scale)][:, inf_ind : inf_ind + 1, :, :], pix_coords, padding_mode="border")
 
-            if scale == 0:
+            if scale == 0 and self.opt.selfocclu:
                 real_scale_disp = scaled_disp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1,1).expand_as(scaled_disp))
                 SSIMMask = self.selfOccluMask(real_scale_disp, T[:, 0, 3])
 
