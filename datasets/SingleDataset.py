@@ -150,6 +150,7 @@ class SingleDataset(data.Dataset):
         do_color_aug = self.is_train and random.random() > 0.5
         # do_color_aug = False
         do_flip = self.is_train and random.random() > 0.5
+        # do_flip = True
         # do_flip = random.random() > 0.5
         line = self.filenames[index].split()
         folder = line[0]
@@ -213,7 +214,7 @@ class SingleDataset(data.Dataset):
                 depth_gtr = self.get_depth(folder, frame_index, 'r', do_flip)
                 depth_gtl = torch.from_numpy(np.expand_dims(depth_gtl, 0).astype(np.float32))
                 depth_gtr = torch.from_numpy(np.expand_dims(depth_gtr, 0).astype(np.float32))
-                if do_flip:
+                if not do_flip:
                     inputs["depth_gt"] = torch.cat([depth_gtl, depth_gtr], dim=0)
                 else:
                     inputs["depth_gt"] = torch.cat([depth_gtr, depth_gtl], dim=0)
