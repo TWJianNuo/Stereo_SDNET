@@ -124,7 +124,8 @@ def evaluate(opt):
         with torch.no_grad():
             for data in dataloader:
                 input_color = torch.cat([data[("color", 0, 0)], data[("color", 's', 0)]], dim=1).cuda()
-
+                # import pickle
+                # pickle.dump(input_color, open("input_color.p", "wb"))
                 if opt.post_process:
                     # Post-processed results require each image to have two forward passes
                     input_color = torch.cat((input_color, torch.flip(input_color, [3])), 0)

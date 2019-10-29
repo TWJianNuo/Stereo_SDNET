@@ -112,8 +112,8 @@ class SingleDataset(data.Dataset):
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
-                if i == 0 and im == 0:
-                    inputs['border_morph_aug'] = self.to_tensor(self.color_aug2(f))
+                # if i == 0 and im == 0:
+                #     inputs['border_morph_aug'] = self.to_tensor(self.color_aug2(f))
                     # torch.mean(torch.abs(inputs[(n + "_aug", im, i)] - inputs['border_morph_aug']))
 
 

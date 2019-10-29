@@ -76,18 +76,14 @@ class Trainer:
             num_input_images = 2
         self.models["encoder"] = networks.ResnetEncoder(
             self.opt.num_layers, self.opt.weights_init == "pretrained", num_input_images = num_input_images)
-        # print("1.5")
-        # a = torch.zeros([4,4,4]).cuda()
-        # print("1.55")
         self.models["encoder"].to(self.device)
-        # print("1.6")
         self.parameters_to_train += list(self.models["encoder"].parameters())
-        # print("2")
+
         self.models["depth"] = networks.DepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel, outputtwoimage = self.opt.outputtwoimage)
+            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel, outputtwoimage = False)
         self.models["depth"].to(self.device)
 
-        # print("3")
+
         self.parameters_to_train += list(self.models["depth"].parameters())
         self.model_optimizer = optim.Adam(self.parameters_to_train, self.opt.learning_rate)
         self.model_lr_scheduler = optim.lr_scheduler.StepLR(
@@ -505,17 +501,21 @@ class Trainer:
         tags = inputs['tag']
         all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
 
-        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=0).show()
-        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=0).show()
+        # fig1 = tensor2rgb(inputs[("color_aug", 0, 0)], ind=0)
+        # fig2 = tensor2rgb(inputs[("color_aug", 's', 0)], ind=0)
+        # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0)).show()
         #
-        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=1).show()
-        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=1).show()
+        # fig1 = tensor2rgb(inputs[("color_aug", 0, 0)], ind=1)
+        # fig2 = tensor2rgb(inputs[("color_aug", 's', 0)], ind=2)
+        # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0)).show()
         #
-        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=2).show()
-        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=2).show()
+        # fig1 = tensor2rgb(inputs[("color_aug", 0, 0)], ind=3)
+        # fig2 = tensor2rgb(inputs[("color_aug", 's', 0)], ind=3)
+        # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0)).show()
         #
-        # tensor2rgb(inputs[("color_aug", 0, 0)], ind=3).show()
-        # tensor2rgb(inputs[("color_aug", 's', 0)], ind=3).show()
+        # fig1 = tensor2rgb(inputs[("color_aug", 0, 0)], ind=4)
+        # fig2 = tensor2rgb(inputs[("color_aug", 's', 0)], ind=4)
+        # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0)).show()
         #
         # fig1s = tensor2semantic(inputs['seman_gt'][:,0:1,:,:], ind=0)
         # fig1rgb = tensor2rgb(inputs[("color_aug", 0, 0)], ind=0)
@@ -558,20 +558,101 @@ class Trainer:
         # tensor2disp(inputs['depth_gt'][:, 1:2, :, :], ind=3, vmax=1).show()
 
 
+        # features = self.models["encoder"](all_color_aug)
+        # outputs = dict()
+
+        # import pickle
+        # input_color = pickle.load(open("input_color.p", "rb"))
+        # all_color_aug = input_color
         features = self.models["encoder"](all_color_aug)
         outputs = dict()
-
         # for i in range(self.opt.batch_size):
         #     tensor2rgb(inputs["color_aug", 0, 0], ind= i).show()
         #     tensor2semantic(inputs['seman_gt'], ind=i).show()
         losses = dict()
         outputs.update(self.models["depth"](features, computeSemantic = False, computeDepth = True))
-        lossl = self.generate_image_prediction_and_compute_loss(inputs, outputs, direction='l')
-        lossr = self.generate_image_prediction_and_compute_loss(inputs, outputs, direction='r')
-        loss = (lossl + lossr) / 2
+        # tensor2disp(outputs[('mul_disp', 0)], ind=0, vmax=0.1).show()
 
-        losses['totLoss'] = loss
+        if self.opt.outputtwoimage:
+            lossl = self.generate_image_prediction_and_compute_loss(inputs, outputs, direction='l')
+            lossr = self.generate_image_prediction_and_compute_loss(inputs, outputs, direction='r')
+            loss = (lossl + lossr) / 2
+            losses['totLoss'] = loss
+        else:
+            loss = self.generate_image_prediction_and_compute_loss_single_output(inputs, outputs)
+            losses['totLoss'] = loss
         return outputs, losses
+
+    def generate_image_prediction_and_compute_loss_single_output(self, inputs, outputs):
+        loss_smooth_tot = 0
+        loss_photometric_tot = 0
+
+        source_scale = 0
+        sign_converter = torch.ones([self.opt.batch_size, 4, 4], device=torch.device("cuda"))
+        sign_converter[:,0,3] = -1
+
+        sample_rgb = inputs[('color', 's', 0)]
+        target_rgb = inputs[('color', 0, 0)]
+        T = inputs["stereo_T"]
+        inf_ind = 0
+
+        loss_photometric_bs = self.compute_reprojection_loss(sample_rgb, target_rgb)
+
+        for scale in self.opt.scales:
+            resized_disp = F.interpolate(outputs[('mul_disp', scale)][:, inf_ind : inf_ind + 1, :, :], [self.opt.height, self.opt.width], mode='bilinear')
+            scaled_disp, depthmap = disp_to_depth(resized_disp, self.opt.min_depth, self.opt.max_depth)
+            outputs[("depth", scale, 0)] = depthmap
+            cam_points = self.backproject_depth[('kitti', source_scale)](depthmap, inputs[("inv_K", source_scale)])
+            pix_coords = self.project_3d[('kitti', source_scale)](cam_points, inputs[("K", source_scale)], T)
+            reconstructed_rgb = F.grid_sample(sample_rgb, pix_coords, padding_mode="border")
+
+
+            # fig1 = tensor2rgb(reconstructed_rgb, ind=0)
+            # fig2 = tensor2rgb(target_rgb, ind=0)
+            # fig3 = tensor2disp(outputs[('mul_disp', 0)], vmax=0.1, ind=0)
+            # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2), np.array(fig3)], axis=0)).show()
+
+            if scale == 0 and self.opt.selfocclu:
+                real_scale_disp = scaled_disp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1,1).expand_as(scaled_disp))
+                SSIMMask = self.selfOccluMask(real_scale_disp, T[:, 0, 3])
+
+            loss_photometric_coarse = self.compute_reprojection_loss(reconstructed_rgb, target_rgb)
+            loss_photometric, idx = torch.min(torch.cat([loss_photometric_coarse, loss_photometric_bs], dim=1), dim=1)
+
+
+
+            if self.opt.selfocclu:
+                loss_photometric = loss_photometric * (1 - SSIMMask.squeeze(1))
+                loss_photometric_scale = torch.mean(loss_photometric)
+            else:
+                loss_photometric = loss_photometric
+                loss_photometric_scale = torch.mean(loss_photometric)
+
+
+
+            mean_disp = resized_disp.mean(2, True).mean(3, True)
+            norm_disp = resized_disp / (mean_disp + 1e-7)
+            smooth_loss = get_smooth_loss(norm_disp, target_rgb)
+
+            loss_smooth_tot = loss_smooth_tot + self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            loss_photometric_tot = loss_photometric_tot + loss_photometric_scale
+
+
+            # Some check for left
+            # tensor2disp(outputs[('mul_disp', scale)][:, inf_ind : inf_ind + 1, :, :], vmax=0.1, ind=0).show()
+            # print(torch.mean(torch.abs(left_prediction['outputs'][('disp', scale)] - resized_disp)))
+            # print(torch.mean(torch.abs(left_prediction['outputs'][('color', 's', scale)] - reconstructed_rgb)))
+            # print(torch.mean(torch.abs(left_prediction['outputs'][('real_scale_disp', 0)] - real_scale_disp)))
+            # print(torch.mean(torch.abs(left_prediction['outputs']['ssimMask'] - SSIMMask)))
+            # print(torch.mean(torch.abs(left_prediction['losses']['loss_depth/' + str(scale)] - loss_photometric_scale)))
+            # if scale == 0:
+            #     print(torch.mean(torch.abs(left_prediction['losses']['loss_reg/smooth'] - smooth_loss)))
+
+
+        loss = (loss_smooth_tot + loss_photometric_tot) / len(self.opt.scales)
+        # Some check for left
+        # print(torch.mean(torch.abs(left_prediction['losses']['totLoss'] - (loss_smooth_tot + loss_photometric_tot) / len(self.opt.scales))))
+        return loss
 
     def generate_image_prediction_and_compute_loss(self, inputs, outputs, direction = 'l'):
         # Some check for left prediction
@@ -1265,8 +1346,12 @@ class Trainer:
         # gt_loaded = torch.cat([gt_loadedl, gt_loadedr], dim=1)
         # print(torch.mean(torch.abs(gt_loaded - inputs["depth_gt"])))
         # depth_pred = torch.cat([left_prediction['outputs'][("depth", 0, 0)], right_prediction['outputs'][("depth", 0, 0)]], dim=1)
+        if self.opt.outputtwoimage:
+            depth_pred = torch.cat([outputs[("depth", 0, 'l')], outputs[("depth", 0, 'r')]], dim=1)
+        else:
+            depth_pred = outputs[("depth", 0, 0)]
 
-        depth_pred = torch.cat([outputs[("depth", 0, 'l')], outputs[("depth", 0, 'r')]], dim=1)
+
         # tensor2disp(depth_pred, percentile=95, ind=0).show()
         depth_pred = torch.clamp(F.interpolate(
             depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
