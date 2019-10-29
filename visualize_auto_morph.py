@@ -67,7 +67,7 @@ def evaluate(opt):
 
     encoder = networks.ResnetEncoder(opt.num_layers, False, num_input_images=2)
     if opt.switchMode == 'on':
-        depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, isSwitch=True, isMulChannel=opt.isMulChannel)
+        depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, isSwitch=True, isMulChannel=opt.isMulChannel, outputtwoimage = (opt.outputtwoimage == True))
     else:
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
 
@@ -98,7 +98,10 @@ def evaluate(opt):
             outputs.update(depth_decoder(features, computeSemantic=True, computeDepth=False))
             outputs.update(depth_decoder(features, computeSemantic=False, computeDepth=True))
 
-            disparityMap = outputs[('mul_disp', 0)]
+            if not opt.view_right:
+                disparityMap = outputs[('mul_disp', 0)][:, 0:1, :, :]
+            else:
+                disparityMap = outputs[('mul_disp', 0)][:, 1:2, :, :]
             depthMap = torch.clamp(disparityMap, max=80)
             fig_seman = tensor2semantic(inputs['seman_gt'], ind=viewIndex, isGt=True)
             fig_rgb = tensor2rgb(inputs[('color', 0, 0)], ind=viewIndex)

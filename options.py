@@ -346,6 +346,10 @@ class MonodepthOptions:
                                       "from the original monodepth paper",
                                  action="store_true")
 
+        # Visualization
+        self.parser.add_argument("--view_right",
+                                 action="store_true")
+
     def parse(self):
         self.options = self.parser.parse_args()
         return self.options

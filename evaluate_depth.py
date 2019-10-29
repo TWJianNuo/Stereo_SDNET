@@ -89,12 +89,12 @@ def evaluate(opt):
 
         dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
                                            encoder_dict['height'], encoder_dict['width'],
-                                           [0], 4, is_train=False, tag=opt.dataset, img_ext = 'png', load_meta=opt.load_meta, is_load_semantics=opt.use_kitti_gt_semantics, is_predicted_semantics = opt.is_predicted_semantics)
+                                           [0, 's'], 4, is_train=False, tag=opt.dataset, img_ext = 'png', load_meta=opt.load_meta, is_load_semantics=opt.use_kitti_gt_semantics, is_predicted_semantics = opt.is_predicted_semantics)
 
         dataloader = DataLoader(dataset, opt.batch_size, shuffle=False, num_workers=opt.num_workers, drop_last=True)
 
-        encoder = networks.ResnetEncoder(opt.num_layers, False)
-        depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, isSwitch=(opt.switchMode == 'on'), isMulChannel=opt.isMulChannel)
+        encoder = networks.ResnetEncoder(opt.num_layers, False, num_input_images = 2)
+        depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, isSwitch=(opt.switchMode == 'on'), isMulChannel=opt.isMulChannel, outputtwoimage = (opt.outputtwoimage == True))
 
         if opt.borderMorphLoss:
             tool = grad_computation_tools(batch_size=opt.batch_size, height=opt.height, width=opt.width).cuda()
@@ -123,7 +123,7 @@ def evaluate(opt):
         count = 0
         with torch.no_grad():
             for data in dataloader:
-                input_color = data[("color", 0, 0)].cuda()
+                input_color = torch.cat([data[("color", 0, 0)], data[("color", 's', 0)]], dim=1).cuda()
 
                 if opt.post_process:
                     # Post-processed results require each image to have two forward passes
@@ -136,7 +136,7 @@ def evaluate(opt):
 
                 mergeDisp(data, outputs, eval=True)
                 # outputs['disp', 0] = F.interpolate(outputs['disp', 0], [opt.height, opt.width], mode='bilinear', align_corners=True)
-
+                # tensor2disp(outputs['disp', 0], ind=0, vmax=0.09).show()
                 if opt.borderMorphLoss:
                     for key, ipt in data.items():
                         if not (key == 'height' or key == 'width' or key == 'tag' or key == 'cts_meta' or key == 'file_add'):
@@ -180,12 +180,14 @@ def evaluate(opt):
                             dispMaps_morphed.append(dispMap_morphed)
                             changeingRecs.append(changeingRec)
                         dispMaps_morphed = torch.from_numpy(np.stack(dispMaps_morphed, axis=0)).unsqueeze(1).cuda()
-                    outputs[("disp", 0)] = dispMaps_morphed
+                    # outputs[("disp", 0)] = dispMaps_morphed[:, 0:1, :, :]
                     # tensor2disp(dispMaps_morphed, ind=0, vmax=0.09).show()
 
                 # print(count)
+
+                # tensor2disp(outputs[("disp", 0)][:, 0:1, :, :], ind=0, vmax=0.1).show()
                 count = count + 1
-                pred_disp, _ = disp_to_depth(outputs[("disp", 0)], opt.min_depth, opt.max_depth)
+                pred_disp, _ = disp_to_depth(outputs[("disp", 0)][:, 0:1, :, :], opt.min_depth, opt.max_depth)
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
 
                 if opt.post_process:
