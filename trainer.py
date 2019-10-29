@@ -75,7 +75,7 @@ class Trainer:
         else:
             num_input_images = 2
         self.models["encoder"] = networks.ResnetEncoder(
-            self.opt.num_layers, self.opt.weights_init == "pretrained", num_input_images = num_input_images)
+            self.opt.num_layers, self.opt.weights_init == "pretrained", num_input_images = num_input_images, add_mask = int(self.opt.use_mask_input))
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
@@ -238,13 +238,13 @@ class Trainer:
 
             train_dataset = initFunc(
                 datapath_set[i], train_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo, outputtwoimage = self.opt.outputtwoimage)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train = (not self.opt.is_toymode), img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, load_morphed_depth=self.opt.load_morphed_depth, read_stereo=self.opt.read_stereo, outputtwoimage = self.opt.outputtwoimage, use_mask_input = self.opt.use_mask_input)
             train_sample_num[i] = train_dataset.__len__()
             stacked_train_datasets.append(train_dataset)
 
             val_dataset = initFunc(
                 datapath_set[i], val_filenames, self.opt.height, self.opt.width,
-                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, outputtwoimage = self.opt.outputtwoimage)
+                self.opt.frame_ids, 4, tag=dataset_set[i], is_train=False, img_ext=img_ext, load_meta=self.opt.load_meta, is_load_semantics=is_load_semantics, is_predicted_semantics=self.opt.is_predicted_semantics, outputtwoimage = self.opt.outputtwoimage, use_mask_input = self.opt.use_mask_input)
             val_sample_num[i] = val_dataset.__len__()
             stacked_val_datasets.append(val_dataset)
 
@@ -499,8 +499,11 @@ class Trainer:
             if not(key == 'height' or key == 'width' or key == 'tag' or key == 'cts_meta' or key == 'file_add'):
                 inputs[key] = ipt.to(self.device)
         tags = inputs['tag']
-        all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
-
+        if not self.opt.use_mask_input:
+            all_color_aug = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]], dim=1)
+        else:
+            all_color_aug = torch.cat(
+                [inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)], inputs['input_mask']], dim=1)
         # fig1 = tensor2rgb(inputs[("color_aug", 0, 0)], ind=0)
         # fig2 = tensor2rgb(inputs[("color_aug", 's', 0)], ind=0)
         # pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0)).show()

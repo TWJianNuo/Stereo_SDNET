@@ -271,6 +271,8 @@ class SingleDataset(data.Dataset):
         inputs["realIn"] = torch.from_numpy(realIn).float() # Intrinsic
         inputs["realEx"] = torch.from_numpy(realEx).float() # Extrinsic, possibly edited to form in accordance with kitti
 
+        if self.use_mask_input:
+            inputs['input_mask'] = torch.ones(1,self.height,self.width) * torch.sign(inputs["stereo_T"][0, 3])
 
 
         # Test

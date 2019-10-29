@@ -113,6 +113,9 @@ class MonodepthOptions:
         self.parser.add_argument("--use_two_images",
                                  action="store_true"
                                  )
+        self.parser.add_argument("--use_mask_input",
+                                 action="store_true"
+                                 )
         self.parser.add_argument("--direction_left",
                                  action="store_true"
                                  )
@@ -273,7 +276,15 @@ class MonodepthOptions:
                                  type=float,
                                  default=1
                                  )
-
+        self.parser.add_argument("--output_dir",
+                                 type=str
+                                 )
+        self.parser.add_argument("--split_name",
+                                 type=str
+                                 )
+        self.parser.add_argument("--appendix_name",
+                                 type=str
+                                 )
         # SYSTEM options
         self.parser.add_argument("--no_cuda",
                                  help="if set disables CUDA",
