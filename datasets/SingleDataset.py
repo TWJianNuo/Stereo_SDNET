@@ -167,20 +167,13 @@ class SingleDataset(data.Dataset):
         else:
             side = None
 
-        if not self.outputtwoimage:
-            for i in self.frame_idxs:
-                if i == "s":
-                    other_side = {"r": "l", "l": "r"}[side]
-                    inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
-                else:
-                    inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
-        else:
-            if not do_flip:
-                inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'l', do_flip)
-                inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'r', do_flip)
+        for i in self.frame_idxs:
+            if i == "s":
+                other_side = {"r": "l", "l": "r"}[side]
+                inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
             else:
-                inputs[("color", 0, -1)] = self.get_color(folder, frame_index, 'r', do_flip)
-                inputs[("color", 's', -1)] = self.get_color(folder, frame_index, 'l', do_flip)
+                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
             K = org_K.copy()
@@ -205,34 +198,17 @@ class SingleDataset(data.Dataset):
         # self.preprocess(inputs, color_aug)
 
         if self.load_depth:
-            if not self.outputtwoimage:
-                depth_gt = self.get_depth(folder, frame_index, side, do_flip)
-                inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
-                inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
-            else:
-                depth_gtl = self.get_depth(folder, frame_index, 'l', do_flip)
-                depth_gtr = self.get_depth(folder, frame_index, 'r', do_flip)
-                depth_gtl = torch.from_numpy(np.expand_dims(depth_gtl, 0).astype(np.float32))
-                depth_gtr = torch.from_numpy(np.expand_dims(depth_gtr, 0).astype(np.float32))
-                if not do_flip:
-                    inputs["depth_gt"] = torch.cat([depth_gtl, depth_gtr], dim=0)
-                else:
-                    inputs["depth_gt"] = torch.cat([depth_gtr, depth_gtl], dim=0)
+            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+            inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
+            inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+
         if self.load_seman:
             # (self, folder, frame_index, side, do_flip)
-            if not self.outputtwoimage:
-                seman_gt, _ = self.get_seman(folder, frame_index, side, do_flip)
-                if seman_gt is not None:
-                    inputs["seman_gt_eval"] = seman_gt
-                    inputs["seman_gt"] = torch.from_numpy(np.expand_dims(np.array(self.seman_resize(Image.fromarray(seman_gt))), 0).astype(np.int))
-            else:
-                seman_gt_l, _ = self.get_seman(folder, frame_index, 'l', do_flip)
-                seman_gt_r, _ = self.get_seman(folder, frame_index, 'r', do_flip)
-                if not do_flip:
-                    inputs["seman_gt_eval"] = np.stack([seman_gt_l, seman_gt_r], axis=0)
-                else:
-                    inputs["seman_gt_eval"] = np.stack([seman_gt_r, seman_gt_l], axis=0)
-                inputs["seman_gt"] = F.interpolate(torch.from_numpy(inputs["seman_gt_eval"]).unsqueeze(0).float(), size=[self.height, self.width], mode='nearest').squeeze(0).byte()
+            seman_gt, _ = self.get_seman(folder, frame_index, side, do_flip)
+            if seman_gt is not None:
+                inputs["seman_gt_eval"] = seman_gt
+                inputs["seman_gt"] = torch.from_numpy(np.expand_dims(np.array(self.seman_resize(Image.fromarray(seman_gt))), 0).astype(np.int))
+
         self.preprocess(inputs, color_aug)
 
         for i in self.frame_idxs:
@@ -245,19 +221,11 @@ class SingleDataset(data.Dataset):
         # baseline = self.get_baseLine(folder)
         rescale_fac = self.get_rescaleFac(folder)
         if "s" in self.frame_idxs:
-            if not self.outputtwoimage:
-                stereo_T = np.eye(4, dtype=np.float32)
-                baseline_sign = -1 if do_flip else 1
-                side_sign = -1 if side == "l" else 1
-                stereo_T[0, 3] = side_sign * baseline_sign * 0.1 * rescale_fac
-
-                inputs["stereo_T"] = torch.from_numpy(stereo_T)
-            else:
-                stereo_T = np.eye(4, dtype=np.float32)
-                baseline_sign = 1
-                side_sign = -1
-                stereo_T[0, 3] = side_sign * baseline_sign * 0.1 * rescale_fac
-                inputs["stereo_T"] = torch.from_numpy(stereo_T)
+            stereo_T = np.eye(4, dtype=np.float32)
+            baseline_sign = -1 if do_flip else 1
+            side_sign = -1 if side == "l" else 1
+            stereo_T[0, 3] = side_sign * baseline_sign * 0.1 * rescale_fac
+            inputs["stereo_T"] = torch.from_numpy(stereo_T)
 
         # additional info
         inputs["height"] = self.height # final image height
