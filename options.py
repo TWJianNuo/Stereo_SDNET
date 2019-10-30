@@ -122,6 +122,12 @@ class MonodepthOptions:
         self.parser.add_argument("--outputtwoimage",
                                  action="store_true"
                                  )
+        self.parser.add_argument("--eval_masked_prediction",
+                                 action="store_true"
+                                 )
+        self.parser.add_argument("--outputvisualizaiton",
+                                 action="store_true"
+                                 )
 
         # OPTIMIZATION options
         self.parser.add_argument("--batch_size",

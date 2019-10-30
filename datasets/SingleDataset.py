@@ -274,7 +274,7 @@ class SingleDataset(data.Dataset):
         if self.use_mask_input:
             inputs['input_mask'] = torch.ones(1,self.height,self.width) * torch.sign(inputs["stereo_T"][0, 3])
 
-
+        inputs['idx'] = index
         # Test
         # height = img_disparity.shape[1]
         # width = img_disparity.shape[2]

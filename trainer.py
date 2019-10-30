@@ -80,7 +80,7 @@ class Trainer:
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
         self.models["depth"] = networks.DepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel, outputtwoimage = False)
+            self.models["encoder"].num_ch_enc, self.opt.scales, isSwitch=self.switchMode, isMulChannel=self.opt.isMulChannel, outputtwoimage = self.opt.outputtwoimage)
         self.models["depth"].to(self.device)
 
 
@@ -140,6 +140,8 @@ class Trainer:
         # For compute disparity bins
         self.disp_range = np.arange(0, 150, 1)
         self.bins = np.zeros(len(self.disp_range) - 1)
+        self.deptherrRec = np.zeros(7)
+        self.tot_rec = 0
     def fork_stable_net_version(self):
         print("forking stable net.....")
         self.models["stable_encoder"] = networks.ResnetEncoder(
@@ -477,6 +479,11 @@ class Trainer:
 
                 if "depth_gt" in inputs and ('depth', 0, 0) in outputs:
                     self.compute_depth_losses(inputs, outputs, losses)
+                    # tmpdeptherr = self.compute_depth_losses(inputs, outputs, losses)
+                    # tmpdeptherr = torch.Tensor(tmpdeptherr).cpu().numpy()
+                    # self.deptherrRec = self.deptherrRec + tmpdeptherr
+                    # self.tot_rec = self.tot_rec + 1
+                    # print(self.deptherrRec / self.tot_rec)
 
                 self.log("train", inputs, outputs, losses, writeImage=False)
                 if self.step % self.opt.val_frequency == 0:
@@ -567,6 +574,26 @@ class Trainer:
         # import pickle
         # input_color = pickle.load(open("input_color.p", "rb"))
         # all_color_aug = input_color
+        # all_color_aug_flipped = torch.cat([torch.flip(inputs[("color_aug", 's', 0)], dims=[3]), torch.flip(inputs[("color_aug", 0, 0)], dims=[3])], dim=1)
+        # all_color_aug_flipped = torch.cat(
+        #     [torch.flip(inputs[("color_aug", 0, 0)], dims=[3]), torch.flip(inputs[("color_aug", 's', 0)], dims=[3])],
+        #     dim=1)
+        # input_aug1 = torch.cat([inputs[("color_aug", 0, 0)], inputs[("color_aug", 's', 0)]],dim=1)
+        # input_aug2 = torch.cat([torch.flip(inputs[("color_aug", 0, 0)], dims=[3]), torch.flip(inputs[("color_aug", 's', 0)], dims=[3])],dim=1)
+        # input_aug3 = torch.cat([inputs[("color_aug", 's', 0)], inputs[("color_aug", 0, 0)]],dim=1)
+        # input_aug4 = torch.cat([torch.flip(inputs[("color_aug", 's', 0)], dims=[3]), torch.flip(inputs[("color_aug", 0, 0)], dims=[3])],dim=1)
+        # input_syn = torch.cat([input_aug1, input_aug2, input_aug3, input_aug4], dim=0)
+        # features = self.models["encoder"](input_syn)
+        # outputs = dict()
+        # outputs.update(self.models["depth"](features, computeSemantic=False, computeDepth=True))
+        # fig1 = tensor2disp(outputs[('mul_disp', 0)], ind=0, vmax=0.1)
+        # fig2 = tensor2disp(torch.flip(outputs[('mul_disp', 0)], dims=[3]), ind=1, vmax=0.1)
+        # fig3 = tensor2disp(outputs[('mul_disp', 0)], ind=2, vmax=0.1)
+        # fig4 = tensor2disp(torch.flip(outputs[('mul_disp', 0)], dims=[3]), ind=3, vmax=0.1)
+        # fig_combined = pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2), np.array(fig3), np.array(fig4)], axis=0))
+        # fig_combined.show()
+
+        # features = self.models["encoder"](torch.cat([all_color_aug_flipped, all_color_aug], dim=0))
         features = self.models["encoder"](all_color_aug)
         outputs = dict()
         # for i in range(self.opt.batch_size):
@@ -575,6 +602,15 @@ class Trainer:
         losses = dict()
         outputs.update(self.models["depth"](features, computeSemantic = False, computeDepth = True))
         # tensor2disp(outputs[('mul_disp', 0)], ind=0, vmax=0.1).show()
+
+
+        # fig1 = tensor2disp(outputs[('mul_disp', 0)][:,0:1,:,:], ind=0, vmax=0.1)
+        # fig2 = tensor2disp(outputs[('mul_disp', 0)][:,1:2,:,:], ind=1, vmax=0.1)
+        # fig1 = tensor2disp(outputs[('mul_disp', 0)], ind=0, vmax=0.1)
+        # fig2 = tensor2disp(torch.flip(outputs[('mul_disp', 0)], dims=[3]), ind=1, vmax=0.1)
+        # fig_combined = pil.fromarray(np.concatenate([np.array(fig1), np.array(fig2)], axis=0))
+        # fig_combined.show()
+
 
         if self.opt.outputtwoimage:
             lossl = self.generate_image_prediction_and_compute_loss(inputs, outputs, direction='l')
@@ -618,6 +654,14 @@ class Trainer:
             if scale == 0 and self.opt.selfocclu:
                 real_scale_disp = scaled_disp * (torch.abs(inputs[("K", source_scale)][:, 0, 0] * T[:, 0, 3]).view(self.opt.batch_size, 1, 1,1).expand_as(scaled_disp))
                 SSIMMask = self.selfOccluMask(real_scale_disp, T[:, 0, 3])
+
+            # Check
+            # masked_disp = outputs[('mul_disp', scale)] * (1 - SSIMMask)
+            # tensor2disp(masked_disp, vmax=0.1, ind=0).show()
+            # tensor2disp(outputs[('mul_disp', scale)], vmax=0.1, ind=0).show()
+            # tensor2rgb(reconstructed_rgb, ind=0).show()
+            # masked_reconstructed_rgb = reconstructed_rgb * (1 - SSIMMask).expand([-1,3,-1,-1])
+            # tensor2rgb(masked_reconstructed_rgb, ind=0).show()
 
             loss_photometric_coarse = self.compute_reprojection_loss(reconstructed_rgb, target_rgb)
             loss_photometric, idx = torch.min(torch.cat([loss_photometric_coarse, loss_photometric_bs], dim=1), dim=1)
@@ -1349,6 +1393,8 @@ class Trainer:
         # gt_loaded = torch.cat([gt_loadedl, gt_loadedr], dim=1)
         # print(torch.mean(torch.abs(gt_loaded - inputs["depth_gt"])))
         # depth_pred = torch.cat([left_prediction['outputs'][("depth", 0, 0)], right_prediction['outputs'][("depth", 0, 0)]], dim=1)
+        if self.opt.eval_masked_prediction:
+            tmpDisparity = outputs[('mul_disp', 0)] * outputs[('mul_disp', 0)]
         if self.opt.outputtwoimage:
             depth_pred = torch.cat([outputs[("depth", 0, 'l')], outputs[("depth", 0, 'r')]], dim=1)
         else:
@@ -1378,7 +1424,7 @@ class Trainer:
 
         for i, metric in enumerate(self.depth_metric_names):
             losses[metric] = np.array(depth_errors[i].cpu())
-
+        return depth_errors
     def log_time(self, batch_idx, duration, loss_semantic, loss_depth, loss_tot):
         """Print a logging statement to the terminal
         """

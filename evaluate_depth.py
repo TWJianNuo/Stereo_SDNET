@@ -71,7 +71,8 @@ def evaluate(opt):
         bnmorph = BNMorph(height=opt.height, width=opt.width, sparsityRad=2).cuda()
     assert sum((opt.eval_mono, opt.eval_stereo)) == 1, \
         "Please choose mono or stereo evaluation by setting either --eval_mono or --eval_stereo"
-
+    selfOccluMask = SelfOccluMask().cuda()
+    selfOccluMask.th = 0
     if opt.ext_disp_to_eval is None:
 
         opt.load_weights_folder = os.path.expanduser(opt.load_weights_folder)
@@ -189,6 +190,17 @@ def evaluate(opt):
                 # tensor2disp(outputs[("disp", 0)][:, 0:1, :, :], ind=0, vmax=0.1).show()
                 count = count + 1
                 pred_disp, _ = disp_to_depth(outputs[("disp", 0)][:, 0:1, :, :], opt.min_depth, opt.max_depth)
+
+                scaled_disp = pred_disp
+                real_scale_disp = scaled_disp * (torch.abs(data[("K", 0)][:, 0, 0] * data["stereo_T"][:, 0, 3]).view(opt.batch_size, 1, 1, 1).expand_as(scaled_disp)).cuda()
+                SSIMMask = selfOccluMask(real_scale_disp, data["stereo_T"][:, 0, 3].cuda())
+                pred_disp = pred_disp + SSIMMask * 10000000
+
+                # fig1 = tensor2disp(outputs[("disp", 0)], ind=1, vmax=0.1)
+                # fig2 = tensor2disp(outputs[("disp", 0)] * (1 - SSIMMask), ind=1, vmax=0.1)
+                # fig_combined = np.concatenate([np.array(fig1), np.array(fig2)], axis=0)
+                # pil.fromarray(fig_combined).show()
+
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
 
                 if opt.post_process:
@@ -196,7 +208,8 @@ def evaluate(opt):
                     pred_disp = batch_post_process_disparity(pred_disp[:N], pred_disp[N:, :, ::-1])
 
                 pred_disps.append(pred_disp)
-
+                # if count > 2:
+                #     break
         pred_disps = np.concatenate(pred_disps)
 
     else:
@@ -260,6 +273,10 @@ def evaluate(opt):
 
         pred_disp = pred_disps[i]
         pred_disp = cv2.resize(pred_disp, (gt_width, gt_height))
+        invalid_mask = pred_disp < 100
+
+        # Check
+        # tensor2disp(torch.from_numpy(pred_disp).unsqueeze(0).unsqueeze(0), ind=0, percentile=95).show()
         pred_depth = 1 / pred_disp
 
         if opt.eval_split == "eigen":
@@ -270,11 +287,12 @@ def evaluate(opt):
             crop_mask = np.zeros(mask.shape)
             crop_mask[crop[0]:crop[1], crop[2]:crop[3]] = 1
             mask = np.logical_and(mask, crop_mask)
-
+            mask = np.logical_and(mask, invalid_mask)
         else:
             mask = gt_depth > 0
 
         pred_depth = pred_depth[mask]
+        assert pred_disp[mask].max() < 100
         gt_depth = gt_depth[mask]
 
         pred_depth *= opt.pred_depth_scale_factor

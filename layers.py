@@ -620,6 +620,7 @@ class SelfOccluMask(nn.Module):
                                          padding=[1, int((self.detectWidth - 1) / 2)], bias=False)
         self.convLeft.weight = nn.Parameter(convWeightsLeft, requires_grad=False)
         self.convRight.weight = nn.Parameter(convWeightsRight, requires_grad=False)
+        self.th = 0.05
     def forward(self, dispmap, bsline):
         # dispmap = self.gausconv(dispmap)
 
@@ -648,7 +649,7 @@ class SelfOccluMask(nn.Module):
                 output = torch.min(output, dim=1, keepdim=True)[0]
                 output = output[:, :, self.pad - 1:-(self.pad - 1):, -width:]
                 output = torch.tanh(-output)
-                mask = (output > 0.05).float()
+                mask = (output > self.th).float()
                 # mask = (mask > 0.05).float()
             elif direction == 'r':
                 # dispmap_opp = torch.flip(dispmap, dims=[3])
@@ -664,7 +665,7 @@ class SelfOccluMask(nn.Module):
                 output_opp = torch.min(output_opp, dim=1, keepdim=True)[0]
                 output_opp = output_opp[:, :, self.pad - 1:-(self.pad - 1):, -width:]
                 output_opp = torch.tanh(-output_opp)
-                mask = (output_opp > 0.05).float()
+                mask = (output_opp > self.th).float()
                 mask = torch.flip(mask, dims=[3])
 
                 # viewInd = 0

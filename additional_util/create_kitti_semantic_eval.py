@@ -109,60 +109,40 @@ def create_kitti_semantic_map(splitFileLoc, enalrgeTimes):
     fileTrain.close()
     fileVal.close()
 
-def create_eigen_left_right(splitFileLoc, enalrgeTimes):
-    fileTrain = open(os.path.join(splitFileLoc, "train_files.txt"), "w+")
-    fileVal = open(os.path.join(splitFileLoc, "val_files.txt"), "w+")
+def create_eigen_left_right():
+    with open('/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/splits/eigen_split_collect/collection_files.txt') as f:
+        content = f.readlines()
 
-    lrmap = {'l' : 'r', 'r' : 'l'}
-    with open('/media/shengjie/other/sceneUnderstanding/SDNET/splits/eigen_zhou/train_files.txt') as f:
-        content = f.readlines()
-    for rgb_path in content:
-        rgb_path_opp = list(rgb_path)
-        rgb_path_opp[-2] = lrmap[rgb_path[-2]]
-        rgb_path_opp = ''.join(rgb_path_opp)
-        fileTrain.writelines(rgb_path)
-        fileTrain.writelines(rgb_path_opp)
-    with open('/media/shengjie/other/sceneUnderstanding/SDNET/splits/eigen_zhou/val_files.txt') as f:
-        content = f.readlines()
-    for rgb_path in content:
+    newListl = list()
+    newListr = list()
+    newListlr= list()
+    for entry in content:
+        comps = entry.split(' ')
+        prefix = comps[0] + ' ' + comps[1]
+        img_l = prefix + ' ' + 'l\n'
+        img_r = prefix + ' ' + 'r\n'
+        if img_l not in newListl:
+            newListl.append(img_l)
+            newListlr.append(img_l)
+            newListlr.append(img_r)
+    # newList = newListr + newListl
+    fileVal = open('/media/shengjie/other/sceneUnderstanding/Stereo_SDNET/splits/eigen_split_collect/collection_files_lr.txt', "w+")
+
+    for rgb_path in newListlr:
         fileVal.writelines(rgb_path)
-    fileTrain.close()
     fileVal.close()
 
 
-parser = argparse.ArgumentParser(description='evaluation')
-parser.add_argument('--kitti_dataset_root', type=str)
-parser.add_argument('--splitFileLoc', type=str)
-args = parser.parse_args()
-
-def create_kitti3000_left_right(splitFileLoc, enalrgeTimes):
-    fileTrain = open(os.path.join(splitFileLoc, "train_files.txt"), "w+")
-    fileVal = open(os.path.join(splitFileLoc, "val_files.txt"), "w+")
-
-    lrmap = {'l' : 'r', 'r' : 'l'}
-    with open('/media/shengjie/other/sceneUnderstanding/SDNET/splits/eigen_zhou/train_files.txt') as f:
-        content = f.readlines()
-    random.shuffle(content)
-    content = content[0:3000]
-
-    for rgb_path in content:
-        rgb_path_opp = list(rgb_path)
-        rgb_path_opp[-2] = lrmap[rgb_path[-2]]
-        rgb_path_opp = ''.join(rgb_path_opp)
-        fileTrain.writelines(rgb_path)
-        fileTrain.writelines(rgb_path_opp)
-    with open('/media/shengjie/other/sceneUnderstanding/SDNET/splits/eigen_zhou/val_files.txt') as f:
-        content = f.readlines()
-    for rgb_path in content:
-        fileVal.writelines(rgb_path)
-    fileTrain.close()
-    fileVal.close()
+# parser = argparse.ArgumentParser(description='evaluation')
+# parser.add_argument('--kitti_dataset_root', type=str)
+# parser.add_argument('--splitFileLoc', type=str)
+# args = parser.parse_args()
 
 
-parser = argparse.ArgumentParser(description='evaluation')
-parser.add_argument('--kitti_dataset_root', type=str)
-parser.add_argument('--splitFileLoc', type=str)
-args = parser.parse_args()
+# parser = argparse.ArgumentParser(description='evaluation')
+# parser.add_argument('--kitti_dataset_root', type=str)
+# parser.add_argument('--splitFileLoc', type=str)
+# args = parser.parse_args()
 
 
 if __name__ == "__main__":
@@ -179,5 +159,5 @@ if __name__ == "__main__":
     # generateKittiToyExaple(mappingFileLoc, splitFileLoc)
     # generateKittiWithSemanticPredictions(args.splitFileLoc, args.kitti_dataset_root)
 
-    boostTime = 30000
-    create_kitti3000_left_right('/media/shengjie/other/sceneUnderstanding/SDNET/splits/kitti3000_lr', boostTime)
+    # boostTime = 30000
+    create_eigen_left_right()
